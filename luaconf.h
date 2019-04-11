@@ -62,8 +62,11 @@
 /*
 ** By default, Lua on Windows use (some) specific Windows features
 */
+
+#if 0  /* TAISEI: disabled this */
 #if !defined(LUA_USE_C89) && defined(_WIN32) && !defined(_WIN32_WCE)
 #define LUA_USE_WINDOWS  /* enable goodies for regular Windows */
+#endif
 #endif
 
 
@@ -159,6 +162,7 @@
 #if !defined(LUA_FLOAT_TYPE)
 #define LUA_FLOAT_TYPE	LUA_FLOAT_DOUBLE
 #endif
+
 
 /* }================================================================== */
 
@@ -444,7 +448,7 @@
 #define LUAI_UACNUMBER	double
 
 #define LUA_NUMBER_FRMLEN	""
-#define LUA_NUMBER_FMT		"%.14g"
+#define LUA_NUMBER_FMT		"%.16g"  /* TAISEI: changed this to 16 (was 14) */
 
 #define l_mathop(op)		op
 
@@ -473,7 +477,6 @@
 @@ LUA_UNSIGNEDBITS is the number of bits in a LUA_UNSIGNED.
 @@ lua_integer2str converts an integer to a string.
 */
-
 
 /* The following definitions are good for most cases here */
 
@@ -635,7 +638,9 @@
 ** macro must include header 'locale.h'.)
 */
 #if !defined(lua_getlocaledecpoint)
-#define lua_getlocaledecpoint()		(localeconv()->decimal_point[0])
+// #define lua_getlocaledecpoint()		(localeconv()->decimal_point[0])
+#define lua_getlocaledecpoint()		'.'
+/* TAISEI: changed this to not use locale */
 #endif
 
 /* }================================================================== */
@@ -653,8 +658,9 @@
 ** numbers to strings. Define LUA_NOCVTS2N to turn off automatic
 ** coercion from strings to numbers.
 */
-/* #define LUA_NOCVTN2S */
-/* #define LUA_NOCVTS2N */
+/* TAISEI: turned these on */
+#define LUA_NOCVTN2S
+#define LUA_NOCVTS2N
 
 
 /*
@@ -704,7 +710,7 @@
 @@ of a function in debug information.
 ** CHANGE it if you want a different size.
 */
-#define LUA_IDSIZE	60
+#define LUA_IDSIZE	128  /* TAISEI: changed this to 128 (was 60) */
 
 
 /*
