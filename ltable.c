@@ -111,12 +111,12 @@ static const TValue absentkey = {ABSTKEYCONSTANT};
 ** INT_MIN.
 */
 #if !defined(l_hashfloat)
-static int l_hashfloat (lua_Number n) {
+static int l_hashfloat (lua_RealNumber n) {
   int i;
   lua_Integer ni;
-  n = l_mathop(frexp)(n, &i) * -cast_num(INT_MIN);
+  n = l_realmathop(frexp)(l_real(n), &i) * -cast_realnum(INT_MIN);
   if (!lua_numbertointeger(n, &ni)) {  /* is 'n' inf/-inf/NaN? */
-    lua_assert(luai_numisnan(n) || l_mathop(fabs)(n) == cast_num(HUGE_VAL));
+    lua_assert(luai_numisnan(n) || l_realmathop(fabs)(n) == cast_realnum(HUGE_VAL));
     return 0;
   }
   else {  /* normal case */
@@ -138,7 +138,7 @@ static Node *mainposition (const Table *t, int ktt, const Value *kvl) {
     case LUA_TNUMINT:
       return hashint(t, ivalueraw(*kvl));
     case LUA_TNUMFLT:
-      return hashmod(t, l_hashfloat(fltvalueraw(*kvl)));
+      return hashmod(t, l_hashfloat(l_real(fltvalueraw(*kvl))) ^ l_hashfloat(l_imag(fltvalueraw(*kvl))));
     case LUA_TSHRSTR:
       return hashstr(t, tsvalueraw(*kvl));
     case LUA_TLNGSTR:

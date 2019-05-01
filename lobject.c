@@ -210,7 +210,7 @@ static lua_Number lua_strx2number (const char *s, char **endptr) {
       if (sigdig == 0 && *s == '0')  /* non-significant digit (zero)? */
         nosigdig++;
       else if (++sigdig <= MAXSIGDIG)  /* can read it without overflow? */
-          r = (r * cast_num(16.0)) + luaO_hexavalue(*s);
+          r = (r * cast_realnum(16.0)) + luaO_hexavalue(*s);
       else e++; /* too many digits; ignore, but still count for exponent */
       if (hasdot) e--;  /* decimal digit? correct exponent */
     }
@@ -251,6 +251,10 @@ static const char *l_str2dloc (const char *s, lua_Number *result, int mode) {
   *result = (mode == 'x') ? lua_strx2number(s, &endptr)  /* try to convert */
                           : lua_str2number(s, &endptr);
   if (endptr == s) return NULL;  /* nothing recognized? */
+  if (*endptr == 'i') {  /* imaginary number? */
+    *result *= I;
+    ++endptr;
+  }
   while (lisspace(cast_uchar(*endptr))) endptr++;  /* skip trailing spaces */
   return (*endptr == '\0') ? endptr : NULL;  /* OK if no trailing characters */
 }
@@ -360,23 +364,40 @@ int luaO_utf8esc (char *buff, unsigned long x) {
 
 
 /* maximum length of the conversion of a number to a string */
-#define MAXNUMBER2STR	50
+#define MAXNUMBER2STR	128
 
 
 /*
 ** Convert a number object to a string
 */
 void luaO_tostring (lua_State *L, TValue *obj) {
-  char buff[MAXNUMBER2STR];
+  char buff[MAXNUMBER2STR], *imag_buff;
   size_t len;
   lua_assert(ttisnumber(obj));
   if (ttisinteger(obj))
     len = lua_integer2str(buff, sizeof(buff), ivalue(obj));
   else {
-    len = lua_number2str(buff, sizeof(buff), fltvalue(obj));
+    lua_Number val = fltvalue(obj);
+
+    len = lua_number2str(buff, sizeof(buff), l_real(val));
     if (buff[strspn(buff, "-0123456789")] == '\0') {  /* looks like an int? */
       buff[len++] = lua_getlocaledecpoint();
       buff[len++] = '0';  /* adds '.0' to result */
+    }
+
+    if (l_numhasimag(fltvalue(obj))) {
+      if (!signbit(l_imag(val)))
+        buff[len++] = '+';
+
+      imag_buff = buff + len;
+
+      len += lua_number2str(imag_buff, sizeof(buff) - len, l_imag(val));
+      if (imag_buff[strspn(imag_buff, "-0123456789")] == '\0') {  /* looks like an int? */
+        buff[len++] = lua_getlocaledecpoint();
+        buff[len++] = '0';  /* adds '.0' to result */
+      }
+
+      buff[len++] = 'i';
     }
   }
   setsvalue(L, obj, luaS_newlstr(L, buff, len));

@@ -23,7 +23,7 @@
 
 
 #undef PI
-#define PI	(l_mathop(3.141592653589793238462643383279502884))
+#define PI	(l_realmathop(3.141592653589793238462643383279502884))
 
 
 static int math_abs (lua_State *L) {
@@ -33,7 +33,7 @@ static int math_abs (lua_State *L) {
     lua_pushinteger(L, n);
   }
   else
-    lua_pushnumber(L, l_mathop(fabs)(luaL_checknumber(L, 1)));
+    lua_pushnumber(L, l_fabs(luaL_checknumber(L, 1)));
   return 1;
 }
 
@@ -63,9 +63,9 @@ static int math_acos (lua_State *L) {
 }
 
 static int math_atan (lua_State *L) {
-  lua_Number y = luaL_checknumber(L, 1);
-  lua_Number x = luaL_optnumber(L, 2, 1);
-  lua_pushnumber(L, l_mathop(atan2)(y, x));
+  lua_RealNumber y = luaL_checkrealnumber(L, 1);
+  lua_RealNumber x = luaL_optrealnumber(L, 2, 1);
+  lua_pushnumber(L, l_realmathop(atan2)(y, x));
   return 1;
 }
 
@@ -96,7 +96,7 @@ static int math_floor (lua_State *L) {
   if (lua_isinteger(L, 1))
     lua_settop(L, 1);  /* integer is its own floor */
   else {
-    lua_Number d = l_mathop(floor)(luaL_checknumber(L, 1));
+    lua_Number d = l_floor(luaL_checknumber(L, 1));
     pushnumint(L, d);
   }
   return 1;
@@ -107,7 +107,7 @@ static int math_ceil (lua_State *L) {
   if (lua_isinteger(L, 1))
     lua_settop(L, 1);  /* integer is its own ceil */
   else {
-    lua_Number d = l_mathop(ceil)(luaL_checknumber(L, 1));
+    lua_Number d = l_ceil(luaL_checknumber(L, 1));
     pushnumint(L, d);
   }
   return 1;
@@ -125,8 +125,8 @@ static int math_fmod (lua_State *L) {
       lua_pushinteger(L, lua_tointeger(L, 1) % d);
   }
   else
-    lua_pushnumber(L, l_mathop(fmod)(luaL_checknumber(L, 1),
-                                     luaL_checknumber(L, 2)));
+    lua_pushnumber(L, l_realmathop(fmod)(luaL_checkrealnumber(L, 1),
+                                         luaL_checkrealnumber(L, 2)));
   return 1;
 }
 
@@ -142,12 +142,12 @@ static int math_modf (lua_State *L) {
     lua_pushnumber(L, 0);  /* no fractional part */
   }
   else {
-    lua_Number n = luaL_checknumber(L, 1);
+    lua_RealNumber n = luaL_checkrealnumber(L, 1);
     /* integer part (rounds toward zero) */
-    lua_Number ip = (n < 0) ? l_mathop(ceil)(n) : l_mathop(floor)(n);
+    lua_RealNumber ip = (n < 0) ? l_realmathop(ceil)(n) : l_realmathop(floor)(n);
     pushnumint(L, ip);
     /* fractional part (test needed for inf/-inf) */
-    lua_pushnumber(L, (n == ip) ? l_mathop(0.0) : (n - ip));
+    lua_pushnumber(L, (n == ip) ? l_realmathop(0.0) : (n - ip));
   }
   return 2;
 }
@@ -173,14 +173,19 @@ static int math_log (lua_State *L) {
     res = l_mathop(log)(x);
   else {
     lua_Number base = luaL_checknumber(L, 2);
+
+    if (l_numisreal(base) && l_numisreal(x)) {
 #if !defined(LUA_USE_C89)
-    if (base == l_mathop(2.0))
-      res = l_mathop(log2)(x); else
+      if (base == l_realmathop(2.0))
+        res = l_realmathop(log2)(x); else
 #endif
-    if (base == l_mathop(10.0))
-      res = l_mathop(log10)(x);
-    else
+      if (base == l_realmathop(10.0))
+        res = l_realmathop(log10)(x);
+      else
+        res = l_realmathop(log)(x)/l_realmathop(log)(base);
+    } else {
       res = l_mathop(log)(x)/l_mathop(log)(base);
+    }
   }
   lua_pushnumber(L, res);
   return 1;
@@ -192,12 +197,12 @@ static int math_exp (lua_State *L) {
 }
 
 static int math_deg (lua_State *L) {
-  lua_pushnumber(L, luaL_checknumber(L, 1) * (l_mathop(180.0) / PI));
+  lua_pushnumber(L, luaL_checknumber(L, 1) * (l_realmathop(180.0) / PI));
   return 1;
 }
 
 static int math_rad (lua_State *L) {
-  lua_pushnumber(L, luaL_checknumber(L, 1) * (PI / l_mathop(180.0)));
+  lua_pushnumber(L, luaL_checknumber(L, 1) * (PI / l_realmathop(180.0)));
   return 1;
 }
 
@@ -240,6 +245,115 @@ static int math_type (lua_State *L) {
   return 1;
 }
 
+
+static int math_conj(lua_State *L) {
+  lua_pushnumber(L, l_conj(luaL_checknumber(L, 1)));
+  return 1;
+}
+
+
+static int math_real(lua_State *L) {
+  lua_pushnumber(L, l_real(luaL_checknumber(L, 1)));
+  return 1;
+}
+
+
+static int math_imag(lua_State *L) {
+  lua_pushnumber(L, l_imag(luaL_checknumber(L, 1)));
+  return 1;
+}
+
+
+static int math_complex(lua_State *L) {
+  lua_RealNumber nreal = luaL_checkrealnumber(L, 1);
+  lua_RealNumber nimag = luaL_optrealnumber(L, 2, 0);
+  lua_pushnumber(L, l_complex(nreal, nimag));
+  return 1;
+}
+
+
+static int math_polar(lua_State *L) {
+  lua_RealNumber angle = luaL_checknumber(L, 1);
+  lua_RealNumber magnitude = luaL_optnumber(L, 2, 1);
+  lua_pushnumber(L, l_mathop(exp)(I*angle) * magnitude);
+  return 1;
+}
+
+
+static int math_reim(lua_State *L) {
+  lua_Number n = luaL_checknumber(L, 1);
+  lua_pushnumber(L, l_real(n));
+  lua_pushnumber(L, l_imag(n));
+  return 2;
+}
+
+
+static int math_iscomplex(lua_State *L) {
+  int isnum;
+  lua_Number n = lua_tonumberx(L, 1, &isnum);
+  lua_pushboolean(L, isnum && !l_numisreal(n));
+  return 1;
+}
+
+
+static int math_normalize(lua_State *L) {
+  lua_Number n = luaL_checknumber(L, 1);
+  lua_RealNumber magnitude = l_mathop(abs)(n);
+  lua_pushnumber(L, n / magnitude);
+  return 1;
+}
+
+
+static int math_arg(lua_State *L) {
+  lua_pushnumber(L, l_carg(luaL_checknumber(L, 1)));
+  return 1;
+}
+
+
+static int math_proj(lua_State *L) {
+  lua_pushnumber(L, l_cproj(luaL_checknumber(L, 1)));
+  return 1;
+}
+
+
+static int math_isinfinite(lua_State *L) {
+  if(lua_isinteger(L, 1)) {
+    lua_pushboolean(L, 0);
+  } else {
+    // From https://en.cppreference.com/w/c/numeric/complex:
+    // A complex or imaginary number is infinite if one of its components is infinite, even if the other component is NaN.
+    lua_Number n = luaL_checknumber(L, 1);
+    lua_pushboolean(L, isinf(l_real(n)) || isinf(l_imag(n)));
+  }
+
+  return 1;
+}
+
+
+static int math_isfinite(lua_State *L) {
+  if(lua_isinteger(L, 1)) {
+    lua_pushboolean(L, 1);
+  } else {
+    // From https://en.cppreference.com/w/c/numeric/complex:
+    // A complex or imaginary number is finite if both components are neither infinities nor NaNs.
+    lua_Number n = luaL_checknumber(L, 1);
+    lua_pushboolean(L, isfinite(l_real(n)) && isfinite(l_imag(n)));
+  }
+
+  return 1;
+}
+
+
+static int math_isnan(lua_State *L) {
+  if(lua_isinteger(L, 1)) {
+    lua_pushboolean(L, 1);
+  } else {
+    lua_Number n = luaL_checknumber(L, 1);
+    lua_pushboolean(L, isnan(l_real(n)) || isnan(l_imag(n)));
+  }
+
+  return 1;
+}
 
 
 /*
@@ -331,7 +445,7 @@ static Rand64 nextrand (Rand64 *state) {
 #define shift64_FIG  	(64 - FIGS)
 
 /* to scale to [0, 1), multiply by scaleFIG = 2^(-FIGS) */
-#define scaleFIG	(l_mathop(0.5) / ((Rand64)1 << (FIGS - 1)))
+#define scaleFIG	(l_realmathop(0.5) / ((Rand64)1 << (FIGS - 1)))
 
 static lua_Number I2d (Rand64 x) {
   return (lua_Number)(trim64(x) >> shift64_FIG) * scaleFIG;
@@ -457,7 +571,7 @@ static Rand64 nextrand (Rand64 *state) {
 #if FIGS <= 32
 
 /* 2^(-FIGS) */
-#define scaleFIG       (l_mathop(0.5) / (UONE << (FIGS - 1)))
+#define scaleFIG       (l_realmathop(0.5) / (UONE << (FIGS - 1)))
 
 /*
 ** get up to 32 bits from higher half, shifting right to
@@ -697,25 +811,38 @@ static int math_log10 (lua_State *L) {
 static const luaL_Reg mathlib[] = {
   {"abs",   math_abs},
   {"acos",  math_acos},
+  {"arg", math_arg},
   {"asin",  math_asin},
   {"atan",  math_atan},
   {"ceil",  math_ceil},
+  {"complex", math_complex},
+  {"conj", math_conj},
   {"cos",   math_cos},
   {"deg",   math_deg},
   {"exp",   math_exp},
-  {"tointeger", math_toint},
   {"floor", math_floor},
   {"fmod",   math_fmod},
-  {"ult",   math_ult},
+  {"imag", math_imag},
+  {"iscomplex", math_iscomplex},
+  {"isfinite", math_isfinite},
+  {"isinfinite", math_isinfinite},
+  {"isnan", math_isnan},
   {"log",   math_log},
   {"max",   math_max},
   {"min",   math_min},
   {"modf",   math_modf},
+  {"normalize", math_normalize},
+  {"polar", math_polar},
+  {"proj", math_proj},
   {"rad",   math_rad},
+  {"real", math_real},
+  {"reim", math_reim},
   {"sin",   math_sin},
   {"sqrt",  math_sqrt},
   {"tan",   math_tan},
+  {"tointeger", math_toint},
   {"type", math_type},
+  {"ult",   math_ult},
 #if defined(LUA_COMPAT_MATHLIB)
   {"atan2", math_atan},
   {"cosh",   math_cosh},

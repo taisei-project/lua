@@ -130,6 +130,7 @@
 #define LUA_FLOAT_FLOAT		1
 #define LUA_FLOAT_DOUBLE	2
 #define LUA_FLOAT_LONGDOUBLE	3
+#define LUA_FLOAT_COMPLEX_DOUBLE	4
 
 #if defined(LUA_32BITS)		/* { */
 /*
@@ -150,6 +151,10 @@
 #define LUA_FLOAT_TYPE	LUA_FLOAT_DOUBLE
 
 #endif				/* } */
+
+
+#define LUA_INT_TYPE LUA_INT_LONGLONG
+#define LUA_FLOAT_TYPE LUA_FLOAT_COMPLEX_DOUBLE
 
 
 /*
@@ -386,10 +391,11 @@
 
 /* The following definitions are good for most cases here */
 
-#define l_floor(x)		(l_mathop(floor)(x))
-
 #define lua_number2str(s,sz,n)  \
-	l_sprintf((s), sz, LUA_NUMBER_FMT, (LUAI_UACNUMBER)(n))
+	l_sprintf((s), sz, LUA_NUMBER_FMT, (LUAI_UACREALNUMBER)l_real(n))
+
+#define lua_complex2str(s,sz,n)  \
+	l_sprintf((s), sz, LUA_COMPLEX_FMT, (LUAI_UACREALNUMBER)l_real(n), (LUAI_UACREALNUMBER)l_imag(n))
 
 /*
 @@ lua_numbertointeger converts a float number with an integral value
@@ -401,9 +407,9 @@
 ** may have an ill-defined value.)
 */
 #define lua_numbertointeger(n,p) \
-  ((n) >= (LUA_NUMBER)(LUA_MININTEGER) && \
-   (n) < -(LUA_NUMBER)(LUA_MININTEGER) && \
-      (*(p) = (LUA_INTEGER)(n), 1))
+  (l_real(n) >= (LUA_REALNUMBER)(LUA_MININTEGER) && \
+   l_real(n) < -(LUA_REALNUMBER)(LUA_MININTEGER) && \
+      (*(p) = (LUA_INTEGER)l_real(n), 1))
 
 
 /* now the variable definitions */
@@ -418,6 +424,7 @@
 
 #define LUA_NUMBER_FRMLEN	""
 #define LUA_NUMBER_FMT		"%.7g"
+#define LUA_COMPLEX_FMT		"%.7g%+.7gi"
 
 #define l_mathop(op)		op##f
 
@@ -433,7 +440,7 @@
 #define LUAI_UACNUMBER	long double
 
 #define LUA_NUMBER_FRMLEN	"L"
-#define LUA_NUMBER_FMT		"%.19Lg"
+#define LUA_COMPLEX_FMT		"%.19Lg%+.19Lgi"
 
 #define l_mathop(op)		op##l
 
@@ -449,8 +456,38 @@
 
 #define LUA_NUMBER_FRMLEN	""
 #define LUA_NUMBER_FMT		"%.16g"  /* TAISEI: changed this to 16 (was 14) */
+#define LUA_COMPLEX_FMT		"%.16g%+.16gi"
 
 #define l_mathop(op)		op
+
+#define lua_str2number(s,p)	strtod((s), (p))
+
+#elif LUA_FLOAT_TYPE == LUA_FLOAT_COMPLEX_DOUBLE	/* }{ _Complex double */
+
+#define LUA_REALNUMBER	double
+#define LUA_NUMBER	_Complex LUA_REALNUMBER
+
+#define l_mathlim(n)		(DBL_##n)
+
+#define LUAI_UACREALNUMBER	double
+#define LUAI_UACNUMBER	_Complex LUAI_UACREALNUMBER
+
+#define LUA_NUMBER_FRMLEN	""
+#define LUA_NUMBER_FMT		"%.16g"
+#define LUA_COMPLEX_FMT		"%.16g%+.16gi"
+
+#define l_mathop(op)		c##op
+#define l_realmathop(op)	op
+
+#define l_complex(re, im) CMPLX((re), (im))
+#define l_floor(n) l_complex(floor(l_real(n)), floor(l_imag(n)))
+#define l_ceil(n) l_complex(ceil(l_real(n)), ceil(l_imag(n)))
+#define l_real(n) creal(n)
+#define l_imag(n) cimag(n)
+#define l_fabs(n) cabs(n)
+#define l_conj(n) conj(n)
+#define l_carg(n) carg(n)
+#define l_cproj(n) cproj(n)
 
 #define lua_str2number(s,p)	strtod((s), (p))
 
@@ -461,6 +498,61 @@
 #endif					/* } */
 
 
+#ifndef l_complex
+#define l_complex(re, im) ((void)(im), (LUA_REALNUMBER)(re))
+#endif
+
+#ifndef l_realmathop
+#define l_realmathop(op) (l_mathop(op))
+#endif
+
+#ifndef l_real
+#define l_real(n) ((LUA_REALNUMBER)(n))
+#endif
+
+#ifndef l_imag
+#define l_imag(n) ((LUA_REALNUMBER)0)
+#endif
+
+#ifndef l_fabs
+#define l_fabs(n) (l_realmathop(fabs)(n))
+#endif
+
+#ifndef l_floor
+#define l_floor(n) (l_realmathop(floor)(n))
+#endif
+
+#ifndef l_ceil
+#define l_ceil(n) (l_realmathop(ceil)(n))
+#endif
+
+#ifndef l_conj
+#define l_conj(n) ((LUA_REALNUMBER)(n))
+#endif
+
+#ifndef l_carg
+#define l_carg(n) ((LUA_REALNUMBER)0)
+#endif
+
+#ifndef l_cproj
+#define l_cproj(n) ((LUA_REALNUMBER)(n))
+#endif
+
+#ifndef LUA_REALNUMBER
+#define LUA_REALNUMBER LUA_NUMBER
+#endif
+
+#ifndef LUAI_UACREALNUMBER
+#define LUAI_UACREALNUMBER LUAI_UACNUMBER
+#endif
+
+/* Returns true if num has an imaginary component that is not positive zero. */
+#define l_numhasimag(num) \
+	(l_imag(num) != 0 || signbit(l_imag(num)) != 0)
+
+/* Returns true if num is a real number (imaginary component is zero) */
+#define l_numisreal(num) \
+	(l_imag(num) == 0)
 
 /*
 @@ LUA_INTEGER is the integer type used by Lua.
@@ -564,9 +656,9 @@
 ** (All uses in Lua have only one format item.)
 */
 #if !defined(LUA_USE_C89)
-#define l_sprintf(s,sz,f,i)	snprintf(s,sz,f,i)
+#define l_sprintf(s,sz,f,...)	snprintf(s,sz,f,__VA_ARGS__)
 #else
-#define l_sprintf(s,sz,f,i)	((void)(sz), sprintf(s,f,i))
+#define l_sprintf(s,sz,f,...)	((void)(sz), sprintf(s,f,__VA_ARGS__))
 #endif
 
 
@@ -596,7 +688,7 @@
 */
 #if !defined(LUA_USE_C89)
 #define lua_number2strx(L,b,sz,f,n)  \
-	((void)L, l_sprintf(b,sz,f,(LUAI_UACNUMBER)(n)))
+	((void)L, l_sprintf(b,sz,f,(LUAI_UACREALNUMBER)(n)))
 #endif
 
 
@@ -745,7 +837,8 @@
 ** without modifying the main part of the file.
 */
 
-
+#include <assert.h>
+#define lua_assert(x) assert(x)
 
 
 

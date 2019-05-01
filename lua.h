@@ -89,6 +89,8 @@ typedef struct lua_State lua_State;
 /* type of numbers in Lua */
 typedef LUA_NUMBER lua_Number;
 
+/* type of real (i.e. not complex/imaginary) numbers in Lua */
+typedef LUA_REALNUMBER lua_RealNumber;
 
 /* type for integer functions */
 typedef LUA_INTEGER lua_Integer;

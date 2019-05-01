@@ -108,6 +108,10 @@ int luaV_tonumber_ (const TValue *obj, lua_Number *n) {
 ** mode == 2: takes the ceil of the number
 */
 int luaV_flttointeger (lua_Number n, lua_Integer *p, int mode) {
+  if (l_numhasimag(n)) {
+    return 0;
+  }
+
   lua_Number f = l_floor(n);
   if (n != f) {  /* not an integral value? */
     if (mode == 0) return 0;  /* fails if mode demands integral value */
@@ -321,7 +325,7 @@ static int LTintfloat (lua_Integer i, lua_Number f) {
     if (luaV_flttointeger(f, &fi, 2))  /* fi = ceil(f) */
       return i < fi;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
-      return f > 0;  /* greater? */
+      return l_real(f) > 0;  /* greater? */
   }
 }
 
@@ -338,7 +342,7 @@ static int LEintfloat (lua_Integer i, lua_Number f) {
     if (luaV_flttointeger(f, &fi, 1))  /* fi = floor(f) */
       return i <= fi;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
-      return f > 0;  /* greater? */
+      return l_real(f) > 0;  /* greater? */
   }
 }
 
@@ -355,7 +359,7 @@ static int LTfloatint (lua_Number f, lua_Integer i) {
     if (luaV_flttointeger(f, &fi, 1))  /* fi = floor(f) */
       return fi < i;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
-      return f < 0;  /* less? */
+      return l_real(f) < 0;  /* less? */
   }
 }
 
@@ -372,7 +376,7 @@ static int LEfloatint (lua_Number f, lua_Integer i) {
     if (luaV_flttointeger(f, &fi, 2))  /* fi = ceil(f) */
       return fi <= i;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
-      return f < 0;  /* less? */
+      return l_real(f) < 0;  /* less? */
   }
 }
 
@@ -433,12 +437,24 @@ static int lessthanothers (lua_State *L, const TValue *l, const TValue *r) {
 }
 
 
+static inline void checknumorderable(lua_State *L, const TValue *l, const TValue *r) {
+  int lcomplex = ttisfloat(l) && !l_numisreal(fltvalue(l));
+  int rcomplex = ttisfloat(r) && !l_numisreal(fltvalue(r));
+
+  if(lcomplex || rcomplex) {
+    luaG_runerror(L, "attempt to compare complex numbers");
+  }
+}
+
+
 /*
 ** Main operation less than; return 'l < r'.
 */
 int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
-  if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
+  if (ttisnumber(l) && ttisnumber(r)) {  /* both operands are numbers? */
+    checknumorderable(L, l, r);
     return LTnum(l, r);
+  }
   else return lessthanothers(L, l, r);
 }
 
@@ -464,8 +480,10 @@ static int lessequalothers (lua_State *L, const TValue *l, const TValue *r) {
 ** Main operation less than or equal to; return 'l <= r'.
 */
 int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
-  if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
+  if (ttisnumber(l) && ttisnumber(r)) {  /* both operands are numbers? */
+    checknumorderable(L, l, r);
     return LEnum(l, r);
+  }
   else return lessequalothers(L, l, r);
 }
 

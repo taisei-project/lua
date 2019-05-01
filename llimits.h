@@ -116,6 +116,7 @@ typedef LUAI_UACINT l_uacInt;
 #define cast_void(i)	cast(void, (i))
 #define cast_voidp(i)	cast(void *, (i))
 #define cast_num(i)	cast(lua_Number, (i))
+#define cast_realnum(i)	cast(lua_RealNumber, (i))
 #define cast_int(i)	cast(int, (i))
 #define cast_uint(i)	cast(unsigned int, (i))
 #define cast_byte(i)	cast(lu_byte, (i))
@@ -302,8 +303,8 @@ typedef l_uint32 Instruction;
 */
 #if !defined(luai_nummod)
 #define luai_nummod(L,a,b,m)  \
-  { (void)L; (m) = l_mathop(fmod)(a,b); \
-    if (((m) > 0) ? (b) < 0 : ((m) < 0 && (b) > 0)) (m) += (b); }
+  { (void)L; (m) = l_realmathop(fmod)(a,b); \
+    if ((l_real(m) > 0) ? l_real(b) < 0 : (l_real(m) < 0 && l_real(b) > 0)) (m) += l_real(b); }
 #endif
 
 /* exponentiation */
@@ -318,11 +319,11 @@ typedef l_uint32 Instruction;
 #define luai_nummul(L,a,b)      ((a)*(b))
 #define luai_numunm(L,a)        (-(a))
 #define luai_numeq(a,b)         ((a)==(b))
-#define luai_numlt(a,b)         ((a)<(b))
-#define luai_numle(a,b)         ((a)<=(b))
-#define luai_numgt(a,b)         ((a)>(b))
-#define luai_numge(a,b)         ((a)>=(b))
-#define luai_numisnan(a)        (!luai_numeq((a), (a)))
+#define luai_numlt(a,b)         (l_real(a)<l_real(b))
+#define luai_numle(a,b)         (l_real(a)<=l_real(b))
+#define luai_numgt(a,b)         (l_real(a)>l_real(b))
+#define luai_numge(a,b)         (l_real(a)>=l_real(b))
+#define luai_numisnan(a)        (isnan(l_real(a)) || isnan(l_imag(a)))
 #endif
 
 

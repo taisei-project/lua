@@ -421,8 +421,24 @@ LUALIB_API lua_Number luaL_checknumber (lua_State *L, int arg) {
 }
 
 
+LUALIB_API lua_RealNumber luaL_checkrealnumber (lua_State *L, int arg) {
+  int isnum;
+  lua_Number d = lua_tonumberx(L, arg, &isnum);
+  if (!isnum)
+    tag_error(L, arg, LUA_TNUMBER);
+  if (!l_numisreal(d))
+    luaL_argerror(L, arg, "is not a real number");
+  return l_real(d);
+}
+
+
 LUALIB_API lua_Number luaL_optnumber (lua_State *L, int arg, lua_Number def) {
   return luaL_opt(L, luaL_checknumber, arg, def);
+}
+
+
+LUALIB_API lua_RealNumber luaL_optrealnumber (lua_State *L, int arg, lua_RealNumber def) {
+  return luaL_opt(L, luaL_checkrealnumber, arg, def);
 }
 
 

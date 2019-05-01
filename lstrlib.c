@@ -1047,7 +1047,7 @@ static void addquoted (luaL_Buffer *b, const char *s, size_t len) {
 ** (to preserve precision); inf, -inf, and NaN are handled separately.
 ** (NaN cannot be expressed as a numeral, so we write '(0/0)' for it.)
 */
-static int quotefloat (lua_State *L, char *buff, lua_Number n) {
+static int quotefloat (lua_State *L, char *buff, lua_RealNumber n) {
   const char *s;  /* for the fixed representations */
   if (n == (lua_Number)HUGE_VAL)  /* inf? */
     s = "1e9999";
@@ -1082,9 +1082,24 @@ static void addliteral (lua_State *L, luaL_Buffer *b, int arg) {
     case LUA_TNUMBER: {
       char *buff = luaL_prepbuffsize(b, MAX_ITEM);
       int nb;
-      if (!lua_isinteger(L, arg))  /* float? */
-        nb = quotefloat(L, buff, lua_tonumber(L, arg));
-      else {  /* integers */
+      if (!lua_isinteger(L, arg)) {  /* float? */
+        lua_Number num = lua_tonumber(L, arg);
+
+        nb = quotefloat(L, buff, l_real(num));
+
+        if (l_numhasimag(num)) {
+          if(!signbit(l_imag(num))) {
+            buff[nb++] = '-';
+          } else if(l_imag(num) != l_imag(num)) {  /* nan? */
+            buff[nb++] = '+';
+          }
+
+          nb += quotefloat(L, buff + nb, l_imag(num));
+          buff[nb++] = '*';
+          buff[nb++] = '1';
+          buff[nb++] = 'i';
+        }
+      } else {  /* integers */
         lua_Integer n = lua_tointeger(L, arg);
         const char *format = (n == LUA_MININTEGER)  /* corner case? */
                            ? "0x%" LUA_INTEGER_FRMLEN "x"  /* use hex */

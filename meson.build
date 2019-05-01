@@ -93,9 +93,10 @@ lua_exe = executable('lua',
     native : true,
 )
 
-lua_exe = executable('luac',
+# FIXME: this doesn't build yet, needs updating
+luac_exe = executable('luac',
     'luac.c',
     dependencies : [lua_dep],
-    build_by_default : not meson.is_subproject(),
+    build_by_default : false,  # not meson.is_subproject(),
     native : true,
 )
