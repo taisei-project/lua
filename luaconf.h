@@ -63,10 +63,10 @@
 ** By default, Lua on Windows use (some) specific Windows features
 */
 
-#if 0  /* TAISEI: disabled this */
+#if 0  /* TAISEI: moved this to Meson */
+
 #if !defined(LUA_USE_C89) && defined(_WIN32) && !defined(_WIN32_WCE)
 #define LUA_USE_WINDOWS  /* enable goodies for regular Windows */
-#endif
 #endif
 
 
@@ -87,6 +87,7 @@
 #define LUA_USE_DLOPEN		/* MacOS does not need -ldl */
 #endif
 
+#endif
 
 /*
 @@ LUA_C89_NUMBERS ensures that Lua uses the largest types available for
@@ -840,7 +841,7 @@
 #include <assert.h>
 #define lua_assert(x) assert(x)
 
-
+#include "luaconf_auto.h"
 
 #endif
 
