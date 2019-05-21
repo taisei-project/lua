@@ -286,7 +286,7 @@ Lua also offers a system of @emph{warnings} @seeF{warn}.
 Unlike errors, warnings do not interfere
 in any way with program execution.
 They typically only generate a message to the user,
-although this behavior can be adapted from C @see{lua_setwarnf}.
+although this behavior can be adapted from C @seeC{lua_setwarnf}.
 
 }
 
@@ -591,7 +591,7 @@ controls how long the collector waits before starting a new cycle.
 The collector starts a new cycle when the use of memory
 hits @M{n%} of the use after the previous collection.
 Larger values make the collector less aggressive.
-Values less than 100 mean the collector will not wait to
+Values equal to or less than 100 mean the collector will not wait to
 start a new cycle.
 A value of 200 means that the collector waits for the total memory in use
 to double before starting a new cycle.
@@ -835,6 +835,9 @@ In case of normal termination,
 plus any values returned by the coroutine main function.
 In case of errors, @Lid{coroutine.resume} returns @false
 plus the error object.
+In this case, the coroutine does not unwind its stack,
+so that it is possible to inspect it after the error
+with the debug API.
 
 A coroutine yields by calling @Lid{coroutine.yield}.
 When a coroutine yields,
@@ -858,8 +861,10 @@ go as extra arguments to @Lid{coroutine.resume}.
 @Lid{coroutine.wrap} returns all the values returned by @Lid{coroutine.resume},
 except the first one (the boolean error code).
 Unlike @Lid{coroutine.resume},
-@Lid{coroutine.wrap} does not catch errors;
-any error is propagated to the caller.
+the function created by @Lid{coroutine.wrap}
+propagates any error to the caller.
+In this case,
+the function also kills the coroutine @seeF{coroutine.kill}.
 
 As an example of how coroutines work,
 consider the following code:
@@ -1534,8 +1539,15 @@ the other pending closing methods will still be called.
 If a coroutine yields inside a block and is never resumed again,
 the variables visible at that block will never go out of scope,
 and therefore they will not be closed.
-(You should use finalizers to handle this case,
-or else call @Lid{coroutine.kill} to close the variables.)
+Similarly, if a coroutine ends with an error,
+it does not unwind its stack,
+so it does not close any variable.
+You should either use finalizers
+or call @Lid{coroutine.kill} to close the variables in these cases.
+However, note that if the coroutine was created
+through @Lid{coroutine.wrap},
+then its corresponding function will close all variables
+in case of errors.
 
 }
 
@@ -4928,6 +4940,18 @@ Adds the byte @id{c} to the buffer @id{B}
 
 }
 
+@APIEntry{
+const void luaL_addgsub (luaL_Buffer *B, const char *s,
+                         const char *p, const char *r);|
+@apii{0,0,m}
+
+Adds a copy of the string @id{s} to the buffer @id{B},
+replacing any occurrence of the string @id{p}
+with the string @id{r}.
+@seeC{luaL_Buffer}.
+
+}
+
 @APIEntry{void luaL_addlstring (luaL_Buffer *B, const char *s, size_t l);|
 @apii{?,?,m}
 
@@ -5070,12 +5094,29 @@ plus the final string on its top.
 
 }
 
+@APIEntry{char *luaL_buffaddr (luaL_Buffer *B);|
+@apii{0,0,-}
+
+Returns the address of the current contents of buffer @id{B}.
+Note that any addition to the buffer may invalidate this address.
+@seeC{luaL_Buffer}.
+
+}
+
 @APIEntry{void luaL_buffinit (lua_State *L, luaL_Buffer *B);|
 @apii{0,0,-}
 
 Initializes a buffer @id{B}.
 This function does not allocate any space;
 the buffer must be declared as a variable
+@seeC{luaL_Buffer}.
+
+}
+
+@APIEntry{size_t luaL_bufflen (luaL_Buffer *B);|
+@apii{0,0,-}
+
+Returns the length of the current contents of buffer @id{B}.
 @seeC{luaL_Buffer}.
 
 }
@@ -5935,6 +5976,7 @@ This option can be followed by three numbers:
 the garbage-collector pause,
 the step multiplier,
 and the step size.
+A zero means to not change that value.
 }
 
 @item{@St{generational}|
@@ -5942,6 +5984,7 @@ Change the collector mode to generational.
 This option can be followed by two numbers:
 the garbage-collector minor multiplier
 and the major multiplier.
+A zero means to not change that value.
 }
 
 @item{@St{isrunning}|
@@ -6375,11 +6418,12 @@ or if it has stopped with an error.
 Creates a new coroutine, with body @id{f};
 @id{f} must be a function.
 Returns a function that resumes the coroutine each time it is called.
-Any arguments passed to the function behave as the
+Any arguments passed to this function behave as the
 extra arguments to @id{resume}.
-Returns the same values returned by @id{resume},
+The function returns the same values returned by @id{resume},
 except the first boolean.
-In case of error, propagates the error.
+In case of error,
+the function kills the coroutine and propagates the error.
 
 }
 
@@ -6408,11 +6452,15 @@ The function starts by looking into the @Lid{package.loaded} table
 to determine whether @id{modname} is already loaded.
 If it is, then @id{require} returns the value stored
 at @T{package.loaded[modname]}.
+(The absence of a second result in this case
+signals that this call did not have to load the module.)
 Otherwise, it tries to find a @emph{loader} for the module.
 
 To find a loader,
-@id{require} is guided by the @Lid{package.searchers} sequence.
-By changing this sequence,
+@id{require} is guided by the table @Lid{package.searchers}.
+Each item in this table is a search function,
+that searches for the module in a particular way.
+By changing this table,
 we can change how @id{require} looks for a module.
 The following explanation is based on the default configuration
 for @Lid{package.searchers}.
@@ -6429,9 +6477,14 @@ it tries an @emph{all-in-one} loader @seeF{package.searchers}.
 
 Once a loader is found,
 @id{require} calls the loader with two arguments:
-@id{modname} and an extra value dependent on how it got the loader.
-(If the loader came from a file,
-this extra value is the file name.)
+@id{modname} and an extra value,
+a @emph{loader data},
+also returned by the searcher.
+The loader data can be any value useful to the module;
+for the default searchers,
+it indicates where the loader was found.
+(For instance, if the loader came from a file,
+this extra value is the file path.)
 If the loader returns any non-nil value,
 @id{require} assigns the returned value to @T{package.loaded[modname]}.
 If the loader does not return a non-nil value and
@@ -6439,6 +6492,9 @@ has not assigned any value to @T{package.loaded[modname]},
 then @id{require} assigns @Rw{true} to this entry.
 In any case, @id{require} returns the
 final value of @T{package.loaded[modname]}.
+Besides that value, @id{require} also returns as a second result
+the loader data returned by the searcher,
+which indicates how @id{require} found the module.
 
 If there is any error loading or running the module,
 or if it cannot find any loader for the module,
@@ -6540,7 +6596,7 @@ the value of the environment variable @defid{LUA_PATH_5_4} or
 the environment variable @defid{LUA_PATH} or
 with a default path defined in @id{luaconf.h},
 if those environment variables are not defined.
-Any @St{;;} in the value of the environment variable
+A @St{;;} in the value of the environment variable
 is replaced by the default path.
 
 }
@@ -6558,16 +6614,20 @@ table used by @Lid{require}.
 
 @LibEntry{package.searchers|
 
-A table used by @Lid{require} to control how to load modules.
+A table used by @Lid{require} to control how to find modules.
 
 Each entry in this table is a @def{searcher function}.
 When looking for a module,
 @Lid{require} calls each of these searchers in ascending order,
 with the module name (the argument given to @Lid{require}) as its
 sole argument.
-The function can return another function (the module @def{loader})
-plus an extra value that will be passed to that loader,
-or a string explaining why it did not find that module
+If the searcher finds the module,
+it returns another function, the module @def{loader},
+plus an extra value, a @emph{loader data},
+that will be passed to that loader and
+returned as a second result by @Lid{require}.
+If it cannot find the module,
+it returns a string explaining why
 (or @nil if it has nothing to say).
 
 Lua initializes this table with four searcher functions.
@@ -6617,9 +6677,13 @@ into one single library,
 with each submodule keeping its original open function.
 
 All searchers except the first one (preload) return as the extra value
-the file name where the module was found,
+the file path where the module was found,
 as returned by @Lid{package.searchpath}.
-The first searcher returns no extra value.
+The first searcher always returns the string @St{:preload:}.
+
+Searchers should raise no errors and have no side effects in Lua.
+(They may have side effects in C,
+for instance by linking the application with a library.)
 
 }
 
