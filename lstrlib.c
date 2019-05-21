@@ -1245,13 +1245,35 @@ static int str_format (lua_State *L) {
         case 'e': case 'E': case 'f':
         case 'g': case 'G': {
           lua_Number n = luaL_checknumber(L, arg);
-          if (*(strfrmt - 1) == 'f' && l_fabs(n) >= 1e100) {
-            /* 'n' needs more than 99 digits */
-            maxitem = MAX_ITEMF;  /* extra space for '%f' */
-            buff = luaL_prepbuffsize(&b, maxitem);
+          int is_f = *(strfrmt - 1) == 'f';
+          int has_imag = l_numhasimag(n);
+
+          if (is_f && l_realmathop(fabs)(l_real(n)) >= 1e100) {
+            /* 'n' real part needs more than 99 digits */
+            maxitem = MAX_ITEMF;
           }
+
+          if (has_imag) {
+            if (is_f && l_realmathop(fabs)(l_imag(n)) >= 1e100) {
+              /* 'n' imag part needs more than 99 digits */
+              maxitem += MAX_ITEMF + 1;
+            } else {
+              maxitem += MAX_ITEM + 1;
+            }
+          }
+
+          buff = luaL_prepbuffsize(&b, maxitem);
           addlenmod(form, LUA_NUMBER_FRMLEN);
-          nb = l_sprintf(buff, maxitem, form, (LUAI_UACNUMBER)n);
+
+          if (has_imag) {
+            // TODO: maybe strip existing sign and padding modifiers
+            char form2[MAX_FORMAT * 2];
+            l_sprintf(form2, sizeof(form2), "%s%%+%si", form, form + 1);
+            nb = l_sprintf(buff, maxitem, form2, (LUAI_UACREALNUMBER)l_real(n), (LUAI_UACREALNUMBER)l_imag(n));
+          } else {
+            nb = l_sprintf(buff, maxitem, form, (LUAI_UACREALNUMBER)l_real(n));
+          }
+
           break;
         }
         case 'p': {
