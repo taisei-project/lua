@@ -114,10 +114,22 @@ foreach lib : lua_lib_names
     set_variable('lua_@0@_dep'.format(lib), dep)
 endforeach
 
+lua_linit = library('lua-linit',
+    luaconf_auto,
+    'linit.c',
+    dependencies : [lua_dep, lua_all_libdeps],
+)
+
+lua_stdlib_dep = declare_dependency(
+    link_with : lua_linit,
+    dependencies : lua_all_libdeps,
+    include_directories : '.',
+)
+
 lua_exe = executable('lua',
     luaconf_auto,
-    'lua.c', 'linit.c',
-    dependencies : [lua_dep, lua_all_libdeps, readline_dep],
+    'lua.c',
+    dependencies : [lua_dep, lua_stdlib_dep, readline_dep],
     build_by_default : not meson.is_subproject(),
     native : true,
 )
