@@ -131,7 +131,6 @@ lua_exe = executable('lua',
     'lua.c',
     dependencies : [lua_dep, lua_stdlib_dep, readline_dep],
     build_by_default : not meson.is_subproject(),
-    native : true,
 )
 
 # FIXME: this doesn't build yet, needs updating
@@ -140,5 +139,4 @@ luac_exe = executable('luac',
     'luac.c',
     dependencies : [lua_dep],
     build_by_default : false,  # not meson.is_subproject(),
-    native : true,
 )
