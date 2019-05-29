@@ -60,9 +60,18 @@
 	try { a } catch(...) { if ((c)->status == 0) (c)->status = -1; }
 #define luai_jmpbuf		int  /* dummy variable */
 
-#elif defined(LUA_USE_POSIX)				/* }{ */
+#elif defined(LUA_HAVE_SIGSETJMP) && defined(LUA_HAVE_SIGLONGJMP) /* }{ */
 
-/* in POSIX, try _longjmp/_setjmp (more efficient) */
+/* POSIX: try siglongjmp/sigsetjmp, explicitly specifying that we
+ * don't care about the signal mask */
+#define LUAI_THROW(L,c)		siglongjmp((c)->b, 1)
+#define LUAI_TRY(L,c,a)		if (sigsetjmp((c)->b, 0) == 0) { a }
+#define luai_jmpbuf		sigjmp_buf
+
+#elif defined(LUA_HAVE__SETJMP) && defined(LUA_HAVE__LONGJMP) /* }{ */
+
+/* POSIX: try the non-portable _longjmp/_setjmp that exist in some
+ * *nix variants; these don't care about the signal mask */
 #define LUAI_THROW(L,c)		_longjmp((c)->b, 1)
 #define LUAI_TRY(L,c,a)		if (_setjmp((c)->b) == 0) { a }
 #define luai_jmpbuf		jmp_buf
