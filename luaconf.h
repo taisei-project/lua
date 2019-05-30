@@ -354,8 +354,8 @@
 /*
 @@ LUA_COMPAT_MATHLIB controls the presence of several deprecated
 ** functions in the mathematical library.
-** (These functions were already officially removed in 5.3, but
-** nevertheless they are available by default there.)
+** (These functions were already officially removed in 5.3;
+** nevertheless they are still available here.)
 */
 #define LUA_COMPAT_MATHLIB
 
@@ -363,8 +363,11 @@
 @@ LUA_COMPAT_APIINTCASTS controls the presence of macros for
 ** manipulating other integer types (lua_pushunsigned, lua_tounsigned,
 ** luaL_checkint, luaL_checklong, etc.)
+** (These macros were also officially removed in 5.3, but they are still
+** available here.)
 */
 #define LUA_COMPAT_APIINTCASTS
+
 
 /*
 @@ LUA_COMPAT_LT_LE controls the emulation of the '__le' metamethod
@@ -372,14 +375,13 @@
 */
 #define LUA_COMPAT_LT_LE
 
-#endif				/* } */
-
-
 
 /*
 @@ The following macros supply trivial compatibility for some
 ** changes in the API. The macros themselves document how to
 ** change your code to avoid using them.
+** (Once more, these macros were officially removed in 5.3, but they are
+** still available here.)
 */
 #define lua_strlen(L,i)		lua_rawlen(L, (i))
 
@@ -387,6 +389,8 @@
 
 #define lua_equal(L,idx1,idx2)		lua_compare(L,(idx1),(idx2),LUA_OPEQ)
 #define lua_lessthan(L,idx1,idx2)	lua_compare(L,(idx1),(idx2),LUA_OPLT)
+
+#endif				/* } */
 
 /* }================================================================== */
 
