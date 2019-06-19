@@ -314,7 +314,7 @@ static int load_aux (lua_State *L, int status, int envidx) {
   }
 }
 
-
+#ifndef LUA_RESTRICTED
 static int luaB_loadfile (lua_State *L) {
   const char *fname = luaL_optstring(L, 1, NULL);
   const char *mode = luaL_optstring(L, 2, NULL);
@@ -322,6 +322,7 @@ static int luaB_loadfile (lua_State *L) {
   int status = luaL_loadfilex(L, fname, mode);
   return load_aux(L, status, env);
 }
+#endif // !LUA_RESTRICTED
 
 
 /*
@@ -384,11 +385,11 @@ static int luaB_load (lua_State *L) {
 /* }====================================================== */
 
 
+#ifndef LUA_RESTRICTED
 static int dofilecont (lua_State *L, int d1, lua_KContext d2) {
   (void)d1;  (void)d2;  /* only to match 'lua_Kfunction' prototype */
   return lua_gettop(L) - 1;
 }
-
 
 static int luaB_dofile (lua_State *L) {
   const char *fname = luaL_optstring(L, 1, NULL);
@@ -398,7 +399,7 @@ static int luaB_dofile (lua_State *L) {
   lua_callk(L, 0, LUA_MULTRET, 0, dofilecont);
   return dofilecont(L, 0, 0);
 }
-
+#endif // !LUA_RESTRICTED
 
 static int luaB_assert (lua_State *L) {
   if (lua_toboolean(L, 1))  /* condition is true? */
@@ -484,11 +485,13 @@ static int luaB_tostring (lua_State *L) {
 static const luaL_Reg base_funcs[] = {
   {"assert", luaB_assert},
   {"collectgarbage", luaB_collectgarbage},
+#ifndef LUA_RESTRICTED
   {"dofile", luaB_dofile},
+  {"loadfile", luaB_loadfile},
+#endif // !LUA_RESTRICTED
   {"error", luaB_error},
   {"getmetatable", luaB_getmetatable},
   {"ipairs", luaB_ipairs},
-  {"loadfile", luaB_loadfile},
   {"load", luaB_load},
   {"next", luaB_next},
   {"pairs", luaB_pairs},

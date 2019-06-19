@@ -871,6 +871,20 @@
 #define lua_assert(x) assert(x)
 
 #include "luaconf_auto.h"
+#include <stdio.h>
+
+#ifdef LUA_RESTRICTED
+
+#pragma GCC poison fopen popen freopen fread fwrite printf puts fputs fgets fflush fclose fdopen
+
+// provided by application
+void luahook_writestring(const char *string, size_t len);
+void luahook_writestringerror(const char *format, const char *arg);
+
+#define lua_writestring(s,l)      luahook_writestring(s, l)
+#define lua_writeline()           lua_writestring("\n", 1)
+#define lua_writestringerror(s,p) luahook_writestringerror(s, p)
+
+#endif // LUA_RESTRICTED
 
 #endif
-

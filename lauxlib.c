@@ -697,6 +697,7 @@ LUALIB_API void luaL_unref (lua_State *L, int t, int ref) {
 ** =======================================================
 */
 
+#ifndef LUA_RESTRICTED
 typedef struct LoadF {
   int n;  /* number of pre-read characters */
   FILE *f;  /* file being read */
@@ -764,7 +765,6 @@ static int skipcomment (LoadF *lf, int *cp) {
   else return 0;  /* no comment */
 }
 
-
 LUALIB_API int luaL_loadfilex (lua_State *L, const char *filename,
                                              const char *mode) {
   LoadF lf;
@@ -799,6 +799,7 @@ LUALIB_API int luaL_loadfilex (lua_State *L, const char *filename,
   lua_remove(L, fnameindex);
   return status;
 }
+#endif // !LUA_RESTRICTED
 
 
 typedef struct LoadS {

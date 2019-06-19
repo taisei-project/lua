@@ -38,6 +38,7 @@ label1:
 ''', name : 'computed goto test')
 
 conf = configuration_data()
+conf.set('LUA_RESTRICTED', get_option('restricted'))
 conf.set('LUA_DL_DLL', is_windows and not is_posix)
 conf.set('LUA_USE_DLOPEN', is_posix and not is_emscripten)
 conf.set('LUA_USE_LINUX', is_linux)
@@ -150,6 +151,7 @@ foreach lib : lua_lib_names
         '@0@.c'.format(lib),
         dependencies : lua_dep,
         override_options : lua_force_options,
+        build_by_default : false,
     )
 
     if lib == 'lmathlib'
@@ -175,6 +177,7 @@ lua_linit = library('lua-linit',
     'linit.c',
     dependencies : [lua_dep, lua_all_libdeps],
     override_options : lua_force_options,
+    build_by_default : false,
 )
 
 lua_stdlib_dep = declare_dependency(

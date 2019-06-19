@@ -1,0 +1,6 @@
+option(
+    'restricted',
+    type : 'boolean',
+    value : true,
+    description : 'Disables various OS-interfacing functionality (not a full sandbox)'
+)
