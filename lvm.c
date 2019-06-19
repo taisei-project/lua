@@ -1181,7 +1181,13 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         const TValue *slot;
         TValue *rb = vRB(i);
         int c = GETARG_C(i);
-        if (luaV_fastgeti(L, rb, c, slot)) {
+        if (ttisnumber(rb) && c == 1) {
+          setfltvalue(s2v(ra), l_real(nvalue(rb)));
+        }
+        else if (ttisnumber(rb) && c == 2) {
+          setfltvalue(s2v(ra), l_imag(nvalue(rb)));
+        }
+        else if (luaV_fastgeti(L, rb, c, slot)) {
           setobj2s(L, ra, slot);
         }
         else {
@@ -1196,7 +1202,15 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rb = vRB(i);
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a string */
-        if (luaV_fastget(L, rb, key, slot, luaH_getshortstr)) {
+        char *skey = getstr(key);
+
+        if (ttisnumber(rb) && !(strcmp(skey, "r") && strcmp(skey, "x"))) {
+          setfltvalue(s2v(ra), l_real(nvalue(rb)));
+        }
+        else if (ttisnumber(rb) && !(strcmp(skey, "i") && strcmp(skey, "y"))) {
+          setfltvalue(s2v(ra), l_imag(nvalue(rb)));
+        }
+        else if (luaV_fastget(L, rb, key, slot, luaH_getshortstr)) {
           setobj2s(L, ra, slot);
         }
         else
